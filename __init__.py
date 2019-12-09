@@ -19,14 +19,16 @@ class COMMENT:
     >>>     x = torch.tensor([[1,2,],[3,4]])
     >>>     x = F.relu(x)# int64(2, 2)
     """
-    noentry = False
+    visited = set()
     def __init__(self):
-        if COMMENT.noentry: return
         self.target_filename =  os.path.abspath(sys._getframe().f_back.f_code.co_filename)
+        self.target_lineno =  sys._getframe().f_back.f_lineno
+        self.noentry = (self.target_filename, self.target_lineno) in COMMENT.visited
+        COMMENT.visited.add((self.target_filename, self.target_lineno))
         self.comment = dict()
 
     def __enter__(self):
-        if COMMENT.noentry: return
+        if self.noentry: return
         def tracer(frame, event, arg):
             if event != 'return': return tracer
             if not frame.f_back: return tracer
@@ -40,7 +42,7 @@ class COMMENT:
         sys.settrace(tracer)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        if COMMENT.noentry: return
+        if self.noentry: return
         sys.settrace(self._tracer)
         with open(self.target_filename, "r") as f:
             lines = f.readlines()
@@ -48,7 +50,7 @@ class COMMENT:
             lines[b_lineno-1] = lines[b_lineno-1][:-1] + "# "+self.comment[b_lineno] + "\n"
         with open(self.target_filename, "w") as f:
             f.writelines(lines)
-        COMMENT.noentry = True
+        print("\033[32m%s: %s\033[0m"%(self.target_filename, self.target_lineno))
 
 
 if __name__ == '__main__':
@@ -56,13 +58,21 @@ if __name__ == '__main__':
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
+    def comment_numpy():
+        with COMMENT():
+            a = np.array([1,2,3,4,5,6])
+            b = np.array([0,1,2,3,4,5])
+            ab_h = np.hstack((a,b))
+            ab_v = np.vstack((a,b))
+            ab = np.dot(a,b)
+            AA, BB = np.meshgrid(a,b)
 
-    with COMMENT():
-        a = np.array([1,2,3,4,5,6])
-        b = np.array([0,1,2,3,4,5])
-        ab_h = np.hstack((a,b))
-        ab_v = np.vstack((a,b))
-        ab = np.dot(a,b)
-        AA, BB = np.meshgrid(a,b)
-        x = torch.tensor([[1,2,],[3,4]])
-        x = F.relu(x)
+    def comment_pytorch():
+        with COMMENT():
+            x = torch.tensor([[1,2,],[3,4]])
+            x = F.relu(x)
+
+    comment_numpy()
+    comment_pytorch()
+    comment_numpy()
+    comment_pytorch()
