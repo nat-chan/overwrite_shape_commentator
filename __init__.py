@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+# %%
 import os
 import sys
+import linecache
+import threading
 
-
+# %%
 class COMMENT:
     """
     Automatically tracks the return value of the function at the point enclosed by the with statement.
@@ -58,7 +61,46 @@ class COMMENT:
         if self.verbose:
             print("\033[32m%s: %s\033[0m" % self.position)
 
+# %%
+def dissect(f):
+    data = threading.local()
+    data.filename = None
+    data.captured = None
+    data.depth = float('inf')
+    def tracer(frame, event, arg):
+        _frame = frame
+        _depth = 0
+        while _frame:
+            _frame = _frame.f_back
+            _depth += 1
+        funcname = frame.f_code.co_name
+        filename = frame.f_back.f_code.co_filename
+        lineno = frame.f_back.f_lineno
+        if event == 'call' and funcname == 'forward' and data.depth > _depth:
+            data.depth = _depth
+        if event != 'return': return tracer
+        if not frame.f_back: return tracer
+        if hasattr(arg, 'shape') and _depth == data.depth + 1:
+            if data.filename != filename:
+                print(f'\033[35m{filename}\033[0m')
+                data.filename = filename
+            code = linecache.getline(filename, lineno).rstrip()
+            shape = str(tuple(arg.shape)).rjust(25)
+            print(f'\033[32m{lineno:5}\033[36m{shape}\033[0m{code}')
+        if _depth == data.depth:
+            data.captured = frame.f_locals.copy()
+        return tracer
+    def wrapper(*args, **kw):
+        _tracer = sys.gettrace()
+        sys.settrace(tracer)
+        try:
+            ret = f(*args, **kw)
+        finally:
+            sys.settrace(_tracer)
+        return data.captured
+    return wrapper
 
+# %%
 if __name__ == '__main__':
     import numpy as np
     import torch
@@ -83,3 +125,4 @@ if __name__ == '__main__':
     comment_pytorch()
     comment_numpy()
     comment_pytorch()
+# %%
