@@ -15,12 +15,12 @@ class COMMENT:
     >>> with shapyr.COMMENT():
     >>>     a = np.array([1,2,3,4,5,6])
     >>>     b = np.array([0,1,2,3,4,5])
-    >>>     ab_h = np.hstack((a,b))# int64(12,)
-    >>>     ab_v = np.vstack((a,b))# int64(2, 6)
+    >>>     ab_h = np.hstack((a,b))
+    >>>     ab_v = np.vstack((a,b))
     >>>     ab = np.dot(a,b)
     >>>     AA, BB = np.meshgrid(a,b)
     >>>     x = torch.tensor([[1,2,],[3,4]])
-    >>>     x = F.relu(x)# int64(2, 2)
+    >>>     x = F.relu(x)
     """
     visited = set()
 
@@ -61,7 +61,6 @@ class COMMENT:
         if self.verbose:
             print("\033[32m%s: %s\033[0m" % self.position)
 
-# %%
 def dissect(f):
     data = threading.local()
     data.filename = None
@@ -100,29 +99,17 @@ def dissect(f):
         return data.captured
     return wrapper
 
-# %%
 if __name__ == '__main__':
     import numpy as np
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
 
     def comment_numpy():
         with COMMENT():
             a = np.array([1, 2, 3, 4, 5, 6])
             b = np.array([0, 1, 2, 3, 4, 5])
-            ab_h = np.hstack((a, b))# int64(12,)
-            ab_v = np.vstack((a, b))# int64(2, 6)
+            ab_h = np.hstack((a, b))
+            ab_v = np.vstack((a, b))
             ab = np.dot(a, b)
             AA, BB = np.meshgrid(a, b)
 
-    def comment_pytorch():
-        with COMMENT():
-            x = torch.tensor([[1, 2], [3, 4]])
-            x = F.relu(x)# int64(2, 2)
-
     comment_numpy()
-    comment_pytorch()
     comment_numpy()
-    comment_pytorch()
-# %%
